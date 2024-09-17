@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UMA.Context;
@@ -21,6 +22,7 @@ namespace UMA.Controllers
         }
 
         [HttpGet("GetAllUsers")]
+        [Authorize]
         public IActionResult GetAllUsers()
         {
             try
@@ -34,7 +36,7 @@ namespace UMA.Controllers
             }
         }
 
-        [HttpGet("GetUserById{id}")]
+        [HttpGet("GetUserById/id={id}")]
         public IActionResult GetUserById(Guid id)
         {
             try
@@ -62,6 +64,11 @@ namespace UMA.Controllers
 
             try
             {
+                var isExists = _context.Users.Any(t =>  t.UserName==userDto.UserName|| t.Email==userDto.Email) ;
+                if(isExists)
+                {
+                    return Conflict("Data already exists");
+                }
                 var newUser = new User
                 {
                     Name = userDto.Name,
@@ -83,8 +90,8 @@ namespace UMA.Controllers
             }
         }
 
-        [HttpPut("UpdateUser{id}")]
-
+        [HttpPut]
+        [Route("UpdateUser")]
         public IActionResult UpdateUser(Guid id, UserDto userDto)
         {
             if (userDto == null)
@@ -94,10 +101,17 @@ namespace UMA.Controllers
 
             try
             {
+
                 var user = _context.Users.Find(id);
                 if (user == null)
                 {
                     return NotFound($"User with ID {id} not found.");
+                }
+                var lsUsers = _context.Users.Where(t  =>t.Id != id).ToList();
+                var isExists = lsUsers.Any(t => t.UserName == userDto.UserName || t.Email == userDto.Email);
+                if (isExists)
+                {
+                    return Conflict("Data already exists");
                 }
 
                 user.Name = userDto.Name;
