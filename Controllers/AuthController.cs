@@ -29,7 +29,7 @@ namespace UMA.Controllers
             var user= await _dataContext.Users.SingleOrDefaultAsync(t => (t.UserName == inp|| t.Email==inp||t.PhoneNumber==inp));
             if (user==null)
             {
-                return NotFound("nn");
+                return NotFound("User is not exists");
             }
             var verPass= _passwordHasher.VerifyHashedPassword(user,user.Password,password);
             if(verPass==PasswordVerificationResult.Success)
@@ -40,7 +40,7 @@ namespace UMA.Controllers
                     token= result,
                 }));
             }
-            return Conflict("zz");
+            return Conflict("Your password is wrong");
         }
     }
 }

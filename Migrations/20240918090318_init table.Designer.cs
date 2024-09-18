@@ -12,8 +12,8 @@ using UMA.Context;
 namespace UMA.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20240916225742_Create table")]
-    partial class Createtable
+    [Migration("20240918090318_init table")]
+    partial class inittable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

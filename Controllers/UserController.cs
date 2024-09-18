@@ -22,7 +22,7 @@ namespace UMA.Controllers
         }
 
         [HttpGet("GetAllUsers")]
-        [Authorize]
+        [Authorize(Policy= "AdminPolicy")]
         public IActionResult GetAllUsers()
         {
             try
@@ -37,6 +37,7 @@ namespace UMA.Controllers
         }
 
         [HttpGet("GetUserById/id={id}")]
+        [Authorize(Policy = "AdminPolicy,UserPolicy")]
         public IActionResult GetUserById(Guid id)
         {
             try
@@ -55,13 +56,17 @@ namespace UMA.Controllers
         }
 
         [HttpPost("CreateUser")]
+        [AllowAnonymous]
         public IActionResult CreateUser(UserDto userDto)
         {
             if (userDto == null)
             {
                 return BadRequest("User data is null.");
             }
-
+            if(userDto .RoleId == Role.Admin )
+            {
+                return Unauthorized();
+            }
             try
             {
                 var isExists = _context.Users.Any(t =>  t.UserName==userDto.UserName|| t.Email==userDto.Email) ;
@@ -92,6 +97,7 @@ namespace UMA.Controllers
 
         [HttpPut]
         [Route("UpdateUser")]
+        [Authorize(Policy ="UserPolicy")]
         public IActionResult UpdateUser(Guid id, UserDto userDto)
         {
             if (userDto == null)

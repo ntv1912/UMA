@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace UMA.Migrations
 {
     /// <inheritdoc />
-    public partial class Createtable : Migration
+    public partial class inittable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

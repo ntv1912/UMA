@@ -20,9 +20,10 @@ namespace UMA.Services
             var creds= new SigningCredentials(key,SecurityAlgorithms.HmacSha256);
             var claims = new[]
             {
-                new Claim(ClaimTypes.Name,user.Name),
+              /*  new Claim(ClaimTypes.Name,user.Name),
                 new Claim(ClaimTypes.MobilePhone,user.PhoneNumber),
-                new Claim(ClaimTypes.Email,user.Email),
+                new Claim(ClaimTypes.Email,user.Email),*/
+                new Claim(ClaimTypes.Role,((int)user.RoleId).ToString()),
             };
             var token = new JwtSecurityToken(
                 issuer: jwtSetting["Issuer"],
