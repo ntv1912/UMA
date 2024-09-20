@@ -2,9 +2,12 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic;
 using UMA.Context;
 using UMA.DTO;
+using UMA.Exceptions;
 using UMA.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace UMA.Controllers
 {
@@ -23,118 +26,115 @@ namespace UMA.Controllers
 
         [HttpGet("GetAllUsers")]
         [Authorize(Policy= "AdminPolicy")]
-        public IActionResult GetAllUsers()
+        public async Task<Response> GetAllUsers()
         {
-            try
+            var users = await _context.Users.ToListAsync();
+            if(users==null|| users.Count==0) throw new NotFoundException();
+            Response res = new Response
             {
-                var users = _context.Users.ToList();
-                return Ok(users);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+                IsError = true,
+                Message = "Success",
+                Data = users,
+                StatusCode= 200
+            };
+            return res;
         }
 
         [HttpGet("GetUserById/id={id}")]
         [Authorize(Policy = "AdminPolicy,UserPolicy")]
-        public IActionResult GetUserById(Guid id)
+        public async Task<Response> GetUserById(Guid id)
         {
-            try
+            if(id==null) throw new InvalidInputException();
+            var user =await _context.Users.SingleOrDefaultAsync(u => u.Id == id);
+            if (user == null) throw new NotFoundException();
+            Response res = new Response
             {
-                var user = _context.Users.SingleOrDefault(u => u.Id == id);
-                if (user == null)
-                {
-                    return NotFound($"User with ID {id} not found.");
-                }
-                return Ok(user);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
+                IsError = true,
+                Message = "Success",
+                Data = user,
+                StatusCode = 200
+            };
+            return res;
         }
 
         [HttpPost("CreateUser")]
-        [AllowAnonymous]
-        public IActionResult CreateUser(UserDto userDto)
+        [Authorize(Policy ="AdminPolicy")]
+        public async Task<Response> CreateUser(UserDto userDto)
         {
             if (userDto == null)
             {
-                return BadRequest("User data is null.");
+                throw new InvalidInputException();
             }
             if(userDto .RoleId == Role.Admin )
             {
-                return Unauthorized();
+              throw new UnauthorizedException();
             }
-            try
-            {
-                var isExists = _context.Users.Any(t =>  t.UserName==userDto.UserName|| t.Email==userDto.Email) ;
-                if(isExists)
-                {
-                    return Conflict("Data already exists");
-                }
-                var newUser = new User
-                {
-                    Name = userDto.Name,
-                    Address = userDto.Address,
-                    Email = userDto.Email,
-                    PhoneNumber = userDto.PhoneNumber,
-                    RoleId = userDto.RoleId,
-                    UserName = userDto.UserName,
-                    Password = _passwordHasher.HashPassword(new User(), userDto.Password)
-                };
 
-                _context.Users.Add(newUser);
-                _context.SaveChanges();
-                return CreatedAtAction(nameof(GetUserById), new { id = newUser.Id }, newUser);
-            }
-            catch (Exception ex)
+            var isExists =await _context.Users.AnyAsync(t =>  t.UserName==userDto.UserName|| t.Email==userDto.Email) ;
+            if(isExists)
             {
-                return StatusCode(500, ex.Message);
+                throw new DuplicateDataException();
             }
+            var newUser = new User
+            {
+                Name = userDto.Name,
+                Address = userDto.Address,
+                Email = userDto.Email,
+                PhoneNumber = userDto.PhoneNumber,
+                RoleId = userDto.RoleId,
+                UserName = userDto.UserName,
+            };
+            newUser.Password = _passwordHasher.HashPassword(newUser, userDto.Password);
+            await _context.Users.AddAsync(newUser);
+            await  _context.SaveChangesAsync();
+            Response res = new Response
+            {
+                IsError = true,
+                Message = "Success",
+                Data = newUser,
+                StatusCode = 200
+            };
+            return res;
         }
-
         [HttpPut]
         [Route("UpdateUser")]
         [Authorize(Policy ="UserPolicy")]
-        public IActionResult UpdateUser(Guid id, UserDto userDto)
+        public async Task<Response> UpdateUser(Guid id, UserDto userDto)
         {
             if (userDto == null)
             {
-                return BadRequest("User data is null.");
+                throw new InvalidInputException();
             }
 
-            try
+            var user =await _context.Users.FindAsync(id);
+            if (user == null)
             {
-
-                var user = _context.Users.Find(id);
-                if (user == null)
-                {
-                    return NotFound($"User with ID {id} not found.");
-                }
-                var lsUsers = _context.Users.Where(t  =>t.Id != id).ToList();
-                var isExists = lsUsers.Any(t => t.UserName == userDto.UserName || t.Email == userDto.Email);
-                if (isExists)
-                {
-                    return Conflict("Data already exists");
-                }
-
-                user.Name = userDto.Name;
-                user.Address = userDto.Address;
-                user.Email = userDto.Email;
-                user.PhoneNumber = userDto.PhoneNumber;
-                user.RoleId = userDto.RoleId;
-                user.UserName = userDto.UserName;
-
-                _context.Users.Update(user);
-                _context.SaveChanges();
-                return Ok(user);
+                throw new NotFoundException();
             }
-            catch (Exception ex)
+            var lsUsers =await _context.Users.Where(t  =>t.Id != id).ToListAsync();
+            var isExists = lsUsers.Any(t => t.UserName == userDto.UserName || t.Email == userDto.Email);
+            if (isExists)
             {
-                return StatusCode(500, ex.Message);
+                throw new DuplicateDataException();
             }
+
+            user.Name = userDto.Name;
+            user.Address = userDto.Address;
+            user.Email = userDto.Email;
+            user.PhoneNumber = userDto.PhoneNumber;
+            user.RoleId = userDto.RoleId;
+            user.UserName = userDto.UserName;
+
+            _context.Users.Update(user);
+            _context.SaveChanges();
+            Response res = new Response
+            {
+                IsError = true,
+                Message = "Success",
+                Data = user,
+                StatusCode = 200
+            };
+            return res;
         }
     }
 }

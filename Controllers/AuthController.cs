@@ -6,11 +6,14 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using System.Text;
 using UMA.Context;
 using UMA.DTO;
+using UMA.Exceptions;
 using UMA.Models;
 using UMA.Services;
 
 namespace UMA.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class AuthController:ControllerBase
     {
         private readonly DataContext _dataContext;
@@ -24,23 +27,55 @@ namespace UMA.Controllers
         }
         [HttpPost]
         [Route("Login")]
-        public async Task<IActionResult> Login(string inp,string password)
+        public async Task<IActionResult> Login(string inp, string password)
         {
-            var user= await _dataContext.Users.SingleOrDefaultAsync(t => (t.UserName == inp|| t.Email==inp||t.PhoneNumber==inp));
-            if (user==null)
+            var user = await _dataContext.Users.SingleOrDefaultAsync(t => (t.UserName == inp || t.Email == inp || t.PhoneNumber == inp));
+            if (user == null)
             {
-                return NotFound("User is not exists");
+                throw new NotFoundException();
             }
-            var verPass= _passwordHasher.VerifyHashedPassword(user,user.Password,password);
-            if(verPass==PasswordVerificationResult.Success)
+            var verPass = _passwordHasher.VerifyHashedPassword(user, user.Password, password);
+            if (verPass == PasswordVerificationResult.Success)
             {
-                var result= _jwtTokenService.GenToken(user);
-                return( Ok(new
+                var result = _jwtTokenService.GenToken(user);
+                return (Ok(new
                 {
-                    token= result,
+                    token = result,
                 }));
             }
-            return Conflict("Your password is wrong");
+            throw new InvalidLoginException();
+        }
+        [HttpPost]
+        [Route("Register")]
+        public async Task<IActionResult> Resgister(UserDto userDto)
+        {
+            if (userDto == null)
+            {
+                throw new InvalidInputException();
+            }
+            if (userDto.RoleId == Role.Admin)
+            {
+                throw new UnauthorizedException();
+            }
+            var isExists = await _dataContext.Users.AnyAsync(t => t.UserName == userDto.UserName || t.Email == userDto.Email);
+            if (isExists)
+            {
+                throw new DuplicateDataException();
+            }
+            var newUser = new User
+            {
+                Name = userDto.Name,
+                Address = userDto.Address,
+                Email = userDto.Email,
+                PhoneNumber = userDto.PhoneNumber,
+                RoleId = userDto.RoleId,
+                UserName = userDto.UserName,
+            };
+            newUser.Password = _passwordHasher.HashPassword(newUser, userDto.Password);
+            await _dataContext.Users.AddAsync(newUser);
+            await _dataContext.SaveChangesAsync();
+            var result = _jwtTokenService.GenToken(newUser);
+            return Ok(new { token = result });
         }
     }
 }

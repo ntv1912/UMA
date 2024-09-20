@@ -9,6 +9,8 @@ using UMA.Services;
 using Microsoft.OpenApi.Models;
 using UMA.Models;
 using System.Security.Claims;
+using UMA.Handler;
+using UMA.Exceptions;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +25,32 @@ builder.Services.AddAuthentication(option =>
     option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 }).AddJwtBearer(options =>
 {
+    options.Events = new JwtBearerEvents
+    {
+        OnForbidden= context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            context.Response.ContentType = "application/json";
+            var exception = new UnauthorizedException();
+            var result = new Response(exception.Message);
+            result.StatusCode = StatusCodes.Status403Forbidden;
+            result.Exception = nameof(UnauthorizedException);
+            context.Response.WriteAsJsonAsync(result);
+            return Task.CompletedTask;
+        },
+        OnChallenge=context =>
+        {
+            context.HandleResponse();
+             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            context.Response.ContentType = "application/json";
+            var exception = new UnAuthenticaionException();
+            var result = new Response(exception.Message);
+            result.StatusCode = StatusCodes.Status401Unauthorized;
+            result.Exception= nameof(UnAuthenticaionException);
+            context.Response.WriteAsJsonAsync(result);
+            return Task.CompletedTask;
+        }        
+    };
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -69,7 +97,7 @@ builder.Services.AddSwaggerGen(
         });
     }
 );
-
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -78,9 +106,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseExceptionHandler(option => { });
 app.UseHttpsRedirection();
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
