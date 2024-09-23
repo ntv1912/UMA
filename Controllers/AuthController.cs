@@ -27,14 +27,14 @@ namespace UMA.Controllers
         }
         [HttpPost]
         [Route("Login")]
-        public async Task<IActionResult> Login(string inp, string password)
+        public async Task<IActionResult> Login(UserLoginDto login)
         {
-            var user = await _dataContext.Users.SingleOrDefaultAsync(t => (t.UserName == inp || t.Email == inp || t.PhoneNumber == inp));
+            var user = await _dataContext.Users.SingleOrDefaultAsync(t => (t.UserName == login.inp || t.Email == login.inp || t.PhoneNumber == login.inp));
             if (user == null)
             {
                 throw new NotFoundException();
             }
-            var verPass = _passwordHasher.VerifyHashedPassword(user, user.Password, password);
+            var verPass = _passwordHasher.VerifyHashedPassword(user, user.Password, login.password);
             if (verPass == PasswordVerificationResult.Success)
             {
                 var result = _jwtTokenService.GenToken(user);

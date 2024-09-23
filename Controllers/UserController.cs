@@ -42,10 +42,14 @@ namespace UMA.Controllers
 
         [HttpGet("GetUserById/id={id}")]
         [Authorize(Policy = "AdminPolicy,UserPolicy")]
-        public async Task<Response> GetUserById(Guid id)
+        public async Task<Response> GetUserById(string id)
         {
-            if(id==null) throw new InvalidInputException();
-            var user =await _context.Users.SingleOrDefaultAsync(u => u.Id == id);
+            Guid Id = new Guid();
+            if (!Guid.TryParse(id, out Id) )
+            {
+                throw new InvalidInputException();
+            }
+            var user =await _context.Users.SingleOrDefaultAsync(u => u.Id == Id);
             if (user == null) throw new NotFoundException();
             Response res = new Response
             {
@@ -99,9 +103,10 @@ namespace UMA.Controllers
         [HttpPut]
         [Route("UpdateUser")]
         [Authorize(Policy ="UserPolicy")]
-        public async Task<Response> UpdateUser(Guid id, UserDto userDto)
+        public async Task<Response> UpdateUser(string id, UserDto userDto)
         {
-            if (userDto == null)
+            Guid Id= new Guid();
+            if(!Guid.TryParse(id, out Id)|| userDto == null)
             {
                 throw new InvalidInputException();
             }
@@ -111,7 +116,7 @@ namespace UMA.Controllers
             {
                 throw new NotFoundException();
             }
-            var lsUsers =await _context.Users.Where(t  =>t.Id != id).ToListAsync();
+            var lsUsers =await _context.Users.Where(t  =>t.Id != Id).ToListAsync();
             var isExists = lsUsers.Any(t => t.UserName == userDto.UserName || t.Email == userDto.Email);
             if (isExists)
             {
